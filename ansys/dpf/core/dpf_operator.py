@@ -21,6 +21,7 @@ from ansys.dpf.core import server as serverlib
 LOG = logging.getLogger(__name__)
 LOG.setLevel('DEBUG')
 
+
 class Operator:
     """A class used to represent an Operator which is an elementary
     operation.The Operator is the only object used to create and 
@@ -161,16 +162,43 @@ class Operator:
         request = operator_pb2.OperatorEvaluationRequest()
         request.op.CopyFrom(self._message)
         request.pin = pin
-        
-        if output_type is not None:
+        import threading
+        import queue
+        if output_type is not False:
             _write_output_type_to_proto_style(output_type, request)
-            out = self._stub.Get(request)
-            return _convertOutputMessageToPythonInstance(out, output_type, self._server)
+            my_queue = queue.Queue()
+            def storeInQueue(f):
+              def wrapper(*args):
+                my_queue.put(f(*args))
+              return wrapper
+          
+            @storeInQueue
+            def thread_function(request, output_type):
+                out_future = self._stub.Get.future(request)
+                print("future")
+                print(out_future)
+                import time
+                time.sleep(10)
+                out = out_future.result()
+                print("get",out)        
+                return _convertOutputMessageToPythonInstance(out, output_type, self._server)
+      
+            x = threading.Thread(target=thread_function, args=(request,output_type,), daemon=True)
+            x.start()
+            
+            from ansys.dpf.core import field
+            print("new field", field.Field())
+            import time
+            while x.is_alive():
+                time.sleep(0.01)
+                print("waiting")
+            return my_queue.get()
         else:
             request.type = base_pb2.Type.Value('RUN')
             return self._stub.Get(request)
             
-    
+      
+        
     @property
     def config(self):
         """Returns a copy of the current config of the operator.
