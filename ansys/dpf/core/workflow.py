@@ -118,6 +118,7 @@ class Workflow:
     @protect_grpc
     def get_output(self, pin_name, output_type):
         """Returns the output of the operator on the pin number.
+        A progress bar following the worflow state is printed.
 
         Parameters
         ----------
@@ -128,14 +129,18 @@ class Workflow:
         output_type : core.type enum
             The requested type of the output.
         """
-        
+        self._server._session.add_workflow(self,"thing")
         request = workflow_pb2.WorkflowEvaluationRequest()
         request.wf.CopyFrom(self._message)
         request.pin_name = pin_name
         
         if output_type is not None:
             dpf_operator._write_output_type_to_proto_style(output_type, request)
-            out = self._stub.Get(request)
+            
+            out_future = self._stub.Get.future(request)
+            while out_future.is_active():
+                self._server._session.listen_to_progress()
+            out = out_future.result()
             return dpf_operator._convertOutputMessageToPythonInstance(out, output_type, self._server)
         else:
             raise ValueError("please specify an output type to get the workflow's output")

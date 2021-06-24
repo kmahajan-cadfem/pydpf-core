@@ -507,6 +507,54 @@ def test_print_workflow():
     assert 'output pins' in str(wf)
     assert 'bool' in str(wf)
     
+
+def test_throws_error(allkindofcomplexity):
+    model = dpf.core.Model(allkindofcomplexity)
+    wf = dpf.core.Workflow()
+    op = model.results.stress()
+    op.inputs.read_cyclic(3)    
+    opnorm = dpf.core.operators.averaging.to_nodal_fc(op)
+    add = dpf.core.operators.math.add_fc(opnorm,opnorm)
+    add2 = dpf.core.operators.math.add_fc(add,add)
+    add3 = dpf.core.operators.math.add_fc(add2)
+    add4 = dpf.core.operators.math.add_fc(add3,add3)
+    wf.add_operators([op,opnorm,add,add2,add3,add4])    
+    wf.set_output_name("output", add4, 0)
+    fc = wf.get_output("output", dpf.core.types.fields_container)
+    assert len(fc)==2
+    add4.connect(1,1)
+    with pytest.raises(Exception):
+        fc = wf.get_output("output", dpf.core.types.fields_container)
+        
+def test_flush_workflows_session(allkindofcomplexity):
+    model = dpf.core.Model(allkindofcomplexity)
+    wf = dpf.core.Workflow()
+    op = model.results.stress()
+    op.inputs.read_cyclic(3)    
+    opnorm = dpf.core.operators.averaging.to_nodal_fc(op)
+    add = dpf.core.operators.math.add_fc(opnorm,opnorm)
+    add2 = dpf.core.operators.math.add_fc(add,add)
+    add3 = dpf.core.operators.math.add_fc(add2)
+    add4 = dpf.core.operators.math.add_fc(add3,add3)
+    wf.add_operators([op,opnorm,add,add2,add3,add4])    
+    wf.set_output_name("output", add4, 0)
+    fc = wf.get_output("output", dpf.core.types.fields_container)
+    assert len(fc)==2
+    wf = dpf.core.Workflow()
+    op = model.results.stress()
+    op.inputs.read_cyclic(3)    
+    opnorm = dpf.core.operators.averaging.to_nodal_fc(op)
+    add = dpf.core.operators.math.add_fc(opnorm,opnorm)
+    add2 = dpf.core.operators.math.add_fc(add,add)
+    add3 = dpf.core.operators.math.add_fc(add2)
+    add4 = dpf.core.operators.math.add_fc(add3,add3)
+    wf.add_operators([op,opnorm,add,add2,add3,add4])    
+    wf.set_output_name("output", add4, 0)
+    fc = wf.get_output("output", dpf.core.types.fields_container)
+    assert len(fc)==2
+    wf._server._session.flush_workflows()
+    
+    
     
     
 def main():

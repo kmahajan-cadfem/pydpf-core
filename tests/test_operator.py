@@ -931,7 +931,19 @@ def test_dot_operator_operator():
     out = add.outputs.fields_container()
     assert out[0].scoping.ids == [1,2]
     assert np.allclose(out[0].data, -field.data)
-    
+
+def test_with_progress_operator(allkindofcomplexity):
+    model = dpf.core.Model(allkindofcomplexity)
+    op = model.results.stress()
+    op.inputs.read_cyclic(3)    
+    opnorm = dpf.core.operators.averaging.to_nodal_fc(op)
+    add = dpf.core.operators.math.add_fc(opnorm,opnorm)
+    add2 = dpf.core.operators.math.add_fc(add,add)
+    add3 = dpf.core.operators.math.add_fc(add2)
+    add4 = dpf.core.operators.math.add_fc(add3,add3)
+    add4.progress_bar=True
+    fc = add4.outputs.fields_container()
+    assert len(fc)==2
     
 def test_delete_operator():
     op = dpf.core.Operator("min_max")

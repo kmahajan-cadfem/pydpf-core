@@ -83,6 +83,7 @@ class Operator:
             self._outputs = Outputs(self._message.spec.map_output_pin_spec, self)
         
         self._description = self._message.spec.description
+        self._progress_bar=False
 
     def _add_sub_res_operators(self, sub_results):
         """Dynamically add operators instantiating for sub-results.
@@ -104,6 +105,15 @@ class Operator:
             method2 = functools.partial(bound_method, name=result_type["operator name"])
             setattr(self, result_type["name"], method2)
 
+    @property
+    def progress_bar(self)->bool:
+        """With this property, the user can choose to print a progress bar when
+        the operator's output is requested, default is False"""        
+        return self._progress_bar
+    
+    @progress_bar.setter
+    def progress_bar(self, value)->bool:
+        self._progress_bar = value
         
     @protect_grpc
     def connect(self, pin, inpt, pin_out=0):
@@ -162,40 +172,19 @@ class Operator:
         request = operator_pb2.OperatorEvaluationRequest()
         request.op.CopyFrom(self._message)
         request.pin = pin
-        import threading
-        import queue
-        if output_type is not False:
-            _write_output_type_to_proto_style(output_type, request)
-            my_queue = queue.Queue()
-            def storeInQueue(f):
-              def wrapper(*args):
-                my_queue.put(f(*args))
-              return wrapper
-          
-            @storeInQueue
-            def thread_function(request, output_type):
-                out_future = self._stub.Get.future(request)
-                print("future")
-                print(out_future)
-                import time
-                time.sleep(10)
-                out = out_future.result()
-                print("get",out)        
-                return _convertOutputMessageToPythonInstance(out, output_type, self._server)
-      
-            x = threading.Thread(target=thread_function, args=(request,output_type,), daemon=True)
-            x.start()
-            
-            from ansys.dpf.core import field
-            print("new field", field.Field())
-            import time
-            while x.is_alive():
-                time.sleep(0.01)
-                print("waiting")
-            return my_queue.get()
+        if output_type :
+            _write_output_type_to_proto_style(output_type, request)     
+            self._server._session.add_operator(self,pin, "thing")
+            out_future = self._stub.Get.future(request)            
+            while out_future.is_active():
+                if self._progress_bar:
+                    self._server._session.listen_to_progress()
+            out = out_future.result()
+            return _convertOutputMessageToPythonInstance(out, output_type, self._server)
         else:
             request.type = base_pb2.Type.Value('RUN')
-            return self._stub.Get(request)
+            out_future = self._stub.Get.future(request)   
+            out_future.result()
             
       
         
