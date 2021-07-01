@@ -443,7 +443,7 @@ def _write_output_type_to_proto_style(output_type, request):
 def _convertOutputMessageToPythonInstance(out, output_type, server):
     from ansys.dpf.core import (fields_container, field, property_field, field_base, scopings_container, scoping,
                             meshes_container, meshed_region, result_info, time_freq_support, collection, data_sources,
-                            collection, data_sources, cyclic_support)
+                            collection, data_sources, cyclic_support, workflow, remote_workflow)
     if out.HasField("str"):
         return out.str
     elif out.HasField("int"):
@@ -484,11 +484,17 @@ def _convertOutputMessageToPythonInstance(out, output_type, server):
     elif out.HasField("cyc_support"):
         toconvert = out.cyc_support
         return cyclic_support.CyclicSupport(server=server,cyclic_support=toconvert)
+    elif out.HasField("workflow"):
+        toconvert = out.workflow
+        return workflow.Workflow(server=server,workflow=toconvert)
+    elif out.HasField("remote_workflow"):
+        toconvert = out.remote_workflow
+        return remote_workflow.RemoteWorkflow(server=server,remote_workflow=toconvert)
     
 def _fillConnectionRequestMessage(request, inpt, pin_out=0):
     from ansys.dpf.core import (fields_container, field, property_field, field_base, scopings_container, scoping,
                             meshes_container, meshed_region, result_info, time_freq_support, collection, data_sources,
-                            collection, data_sources, cyclic_support, model)
+                            collection, data_sources, cyclic_support, model, workflow, remote_workflow)
     if isinstance(inpt, str):
         request.str = inpt
     elif isinstance(inpt, bool):
@@ -516,6 +522,10 @@ def _fillConnectionRequestMessage(request, inpt, pin_out=0):
         request.mesh.CopyFrom(inpt._message)
     elif isinstance(inpt, cyclic_support.CyclicSupport):
         request.cyc_support.CopyFrom(inpt._message)
+    elif isinstance(inpt, workflow.Workflow):
+        request.workflow.CopyFrom(inpt._message)
+    elif isinstance(inpt, remote_workflow.RemoteWorkflow):
+        request.remote_workflow.CopyFrom(inpt._message)
     elif isinstance(inpt, Operator):
         request.inputop.inputop.CopyFrom(inpt._message)
         request.inputop.pinOut = pin_out
