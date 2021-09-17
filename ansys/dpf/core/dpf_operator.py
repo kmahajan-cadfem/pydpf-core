@@ -554,6 +554,8 @@ def _fillConnectionRequestMessage(request, inpt, pin_out=0):
         request.mesh.CopyFrom(inpt._message)
     elif isinstance(inpt, cyclic_support.CyclicSupport):
         request.cyc_support.CopyFrom(inpt._message)
+    elif isinstance(inpt, time_freq_support.TimeFreqSupport):
+        request.time_freq_support.CopyFrom(inpt._message)
     elif isinstance(inpt, Operator):
         request.inputop.inputop.CopyFrom(inpt._message)
         request.inputop.pinOut = pin_out
