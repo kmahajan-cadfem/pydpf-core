@@ -341,7 +341,7 @@ class Metadata:
 
         Returns
         -------
-        streams_provider : operators.metadata.streams_provider
+        streams_provider : :class:`ansys.dpf.core.operators.metadata.streams_provider`
 
         Examples
         --------
@@ -389,7 +389,7 @@ class Metadata:
 
         Returns
         -------
-        mesh : :class:`ansys.dpf.core.meshed_region`
+        mesh : :class:`ansys.dpf.core.meshed_region.MeshedRegion`
             Mesh
         """
         # NOTE: this uses the cached mesh and we might consider
@@ -410,7 +410,7 @@ class Metadata:
 
         Returns
         -------
-        mesh_provider : class:`ansys.dpf.core.operators.mesh.mesh_provider`
+        mesh_provider : :class:`ansys.dpf.core.operators.mesh.mesh_provider`
             Mesh provider operator.
 
         """
@@ -431,7 +431,7 @@ class Metadata:
 
         Returns
         -------
-        result_info : :class:`ansys.dpf.core.ResultInfo`
+        result_info : :class:`ansys.dpf.core.result_info.ResultInfo`
         """
         self._cache_result_info()
 
@@ -457,6 +457,6 @@ class Metadata:
 
         Returns
         -------
-        named_selection : :class:`ansys.dpf.core.scoping`
+        named_selection : :class:`ansys.dpf.core.scoping.Scoping`
         """
         return self.meshed_region.named_selection(named_selection)
