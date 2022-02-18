@@ -77,7 +77,8 @@ class _InternalPlotter:
         return label_actors
 
     def add_field(self, field, meshed_region=None, show_max=False, show_min=False,
-                  label_text_size=30, label_point_size=20, **kwargs):
+                  label_text_size=30, label_point_size=20, show_vectors=False,
+                  vector_scale=1.0, **kwargs):
         name = field.name.split("_")[0]
         kwargs.setdefault("stitle", name)
         kwargs.setdefault("show_edges", True)
@@ -91,7 +92,7 @@ class _InternalPlotter:
             mesh_location = meshed_region.nodes
         elif location == locations.elemental:
             mesh_location = meshed_region.elements
-            if show_max or show_min:
+            if show_max or show_min or show_vectors:
                 warnings.warn("`show_max` and `show_min` is only supported for Nodal results.")
                 show_max = False
                 show_min = False
@@ -142,6 +143,18 @@ class _InternalPlotter:
         for index, grid_point in enumerate(grid_points):
             self._plotter.add_point_labels(grid_point, [labels[index]],
                                            font_size=label_text_size, point_size=label_point_size)
+
+        # Add Vectors
+        if show_vectors:
+            # Check if vector result, 3D result
+            if field.data.shape[1] != 3:
+                raise ValueError(
+                    "Field is not a vector. `show_vector` is only supported for 3D results."
+                )
+            pv_mesh = meshed_region.grid
+            pv_mesh["vectors"] = field.data * vector_scale
+            pv_mesh.set_active_vectors("vectors")
+            self._plotter.add_mesh(pv_mesh.arrows)
 
     def show_figure(self, **kwargs):
         background = kwargs.pop("background", None)
@@ -225,7 +238,8 @@ class DpfPlotter:
         self._internal_plotter.add_mesh(meshed_region=meshed_region, **kwargs)
 
     def add_field(self, field, meshed_region=None, show_max=False, show_min=False,
-                  label_text_size=30, label_point_size=20, **kwargs):
+                  label_text_size=30, label_point_size=20, show_vectors=False,
+                  vector_scale=1.0, **kwargs):
         """Add a field containing data to the plotter.
 
         A meshed_region to plot on can be added.
@@ -243,6 +257,11 @@ class DpfPlotter:
             Label the point with the maximum value.
         show_min : bool, optional
             Label the point with the minimum value.
+        show_vectors : bool, optional
+            Plot vectors (arrows) on each node.
+            Only supported for vector results.
+        vector_scale : float, optional
+            Scales vector length.
 
         Examples
         --------
@@ -253,7 +272,7 @@ class DpfPlotter:
         >>> field = model.results.displacement().outputs.fields_container()[0]
         >>> from ansys.dpf.core.plotter import DpfPlotter
         >>> pl = DpfPlotter()
-        >>> pl.add_field(field, mesh)
+        >>> pl.add_field(field, mesh, show_max=True, show_vectors=False)
 
         """
         self._internal_plotter.add_field(field=field,
@@ -262,6 +281,8 @@ class DpfPlotter:
                                          show_min=show_min,
                                          label_text_size=label_text_size,
                                          label_point_size=label_point_size,
+                                         show_vectors=show_vectors,
+                                         vector_scale=vector_scale,
                                          **kwargs)
 
     def show_figure(self, **kwargs):
