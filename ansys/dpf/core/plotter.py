@@ -78,7 +78,7 @@ class _InternalPlotter:
 
     def add_field(self, field, meshed_region=None, show_max=False, show_min=False,
                   label_text_size=30, label_point_size=20, show_vectors=False,
-                  vector_scale=1.0, **kwargs):
+                  vector_scale=None, **kwargs):
         name = field.name.split("_")[0]
         kwargs.setdefault("stitle", name)
         kwargs.setdefault("show_edges", True)
@@ -146,8 +146,21 @@ class _InternalPlotter:
 
         # Add Vectors
         if show_vectors:
+
+            # Get Auto vector scale
+            if not vector_scale:
+                # Get norm
+                norm = core.operators.math.norm(field=field)
+                norm_out = norm.outputs.field.get_data()
+
+                min_max = core.operators.min_max.min_max(field=norm_out)
+                max_field = min_max.outputs.field_max()
+                max_value_inv = core.operators.math.invert(field=max_field)
+                # Inverse of max. field norm value
+                vector_scale = max_value_inv.outputs.field.get_data().data[0]
+
             # Check if vector result, 3D result
-            if field.data.shape[1] != 3:
+            if field.component_count != 3:
                 raise ValueError(
                     "Field is not a vector. `show_vector` is only supported for 3D results."
                 )
@@ -239,7 +252,7 @@ class DpfPlotter:
 
     def add_field(self, field, meshed_region=None, show_max=False, show_min=False,
                   label_text_size=30, label_point_size=20, show_vectors=False,
-                  vector_scale=1.0, **kwargs):
+                  vector_scale=None, **kwargs):
         """Add a field containing data to the plotter.
 
         A meshed_region to plot on can be added.
