@@ -33,5 +33,5 @@ comp_sel_z = dpf.operators.logic.component_selector(field=fields[0], component_n
 uz_field = comp_sel_z.outputs.field.get_data()
 
 plot = DpfPlotter()
-plot.add_field(fields[0], opacity=0.5, show_vectors=True)
+plot.add_field(fields[0], opacity=0.5, show_vectors=True, vector_scale=1e-4)
 plot.show_figure(show_axes=True)
