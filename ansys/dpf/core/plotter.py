@@ -10,6 +10,7 @@ import tempfile
 import os
 import sys
 import numpy as np
+import inspect
 import warnings
 
 from ansys import dpf
@@ -21,6 +22,8 @@ from ansys.dpf.core.check_version import meets_version
 
 
 class _InternalPlotter:
+    """The _InternalPlotter class is based on PyVista."""
+
     def __init__(self, **kwargs):
         try:
             import pyvista as pv
@@ -34,26 +37,66 @@ class _InternalPlotter:
         if mesh is not None:
             self._plotter.add_mesh(mesh.grid)
 
-    def add_mesh(self, meshed_region, **kwargs):
-        has_attribute_scalar_bar = False
-        try:
-            has_attribute_scalar_bar = hasattr(self._plotter, 'scalar_bar')
-        except:
-            has_attribute_scalar_bar = False
+    def _sort_supported_kwargs(self, bound_method, **kwargs):
+        supported_args = inspect.getargspec(bound_method).args
+        kwargs_in = {}
+        kwargs_not_avail = {}
+        for key, item in kwargs.items():
+            if key in supported_args:
+                kwargs_in[key] = item
+            else:
+                kwargs_not_avail[key] = item
 
-        if not has_attribute_scalar_bar:
-            kwargs.setdefault("stitle", "Mesh")
+        if len(kwargs_not_avail) > 0:
+            txt = "The following arguments are not supported: "
+            txt += str(kwargs_not_avail)
+            warnings.warn(txt)
+
+        return kwargs_in
+
+    def add_mesh(self, meshed_region, **kwargs):
+        try:
+            import pyvista as pv
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError(
+                "To use plotting capabilities, please install pyvista "
+                "with :\n pip install pyvista>=0.24.0"
+            )
+        pv_version = pv.__version__
+        version_to_reach = '0.30.0'  # when stitle started to be deprecated
+        meet_ver = meets_version(pv_version, version_to_reach)
+        if meet_ver:
+            # use scalar_bar_args
+            scalar_bar_args = {'title': 'Mesh'}
+            kwargs.setdefault("scalar_bar_args", scalar_bar_args)
         else:
-            if self._plotter.scalar_bar.GetTitle() is None:
+            # use stitle
+            has_attribute_scalar_bar = False
+            try:
+                has_attribute_scalar_bar = hasattr(self._plotter, 'scalar_bar')
+            except:
+                has_attribute_scalar_bar = False
+
+            if not has_attribute_scalar_bar:
                 kwargs.setdefault("stitle", "Mesh")
+            else:
+                if self._plotter.scalar_bar.GetTitle() is None:
+                    kwargs.setdefault("stitle", "Mesh")
         kwargs.setdefault("show_edges", True)
         kwargs.setdefault("nan_color", "grey")
-        self._plotter.add_mesh(meshed_region.grid, **kwargs)
+
+        kwargs_in = self._sort_supported_kwargs(
+            bound_method=self._plotter.add_mesh,
+            **kwargs
+        )
+        self._plotter.add_mesh(meshed_region.grid, **kwargs_in)
 
     def add_point_labels(self, nodes, meshed_region, labels=None, **kwargs):
         label_actors = []
-        node_indexes = [meshed_region.nodes.mapping_id_to_index.get(node.id) for node in nodes]
-        grid_points = [meshed_region.grid.points[node_index] for node_index in node_indexes]
+        node_indexes = [meshed_region.nodes.mapping_id_to_index.get(node.id) for
+                        node in nodes]
+        grid_points = [meshed_region.grid.points[node_index] for node_index in
+                       node_indexes]
 
         def get_label_at_grid_point(index):
             try:
@@ -66,21 +109,40 @@ class _InternalPlotter:
             label_at_grid_point = get_label_at_grid_point(index)
             if label_at_grid_point:
                 label_actors.append(self._plotter.add_point_labels(grid_point,
-                                                                   [labels[index]],
+                                                                   [labels[
+                                                                        index]],
                                                                    **kwargs))
             else:
                 scalar_at_index = meshed_region.grid.active_scalars[index]
                 scalar_at_grid_point = f"{scalar_at_index:.2f}"
                 label_actors.append(self._plotter.add_point_labels(grid_point,
-                                                                   [scalar_at_grid_point],
+                                                                   [
+                                                                       scalar_at_grid_point],
                                                                    **kwargs))
         return label_actors
 
-    def add_field(self, field, meshed_region=None, show_max=False, show_min=False,
+    def add_field(self, field, meshed_region=None, show_max=False,
+                  show_min=False,
                   label_text_size=30, label_point_size=20, show_vectors=False,
                   vector_scale=None, **kwargs):
         name = field.name.split("_")[0]
-        kwargs.setdefault("stitle", name)
+        try:
+            import pyvista as pv
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError(
+                "To use plotting capabilities, please install pyvista "
+                "with :\n pip install pyvista>=0.24.0"
+            )
+        pv_version = pv.__version__
+        version_to_reach = '0.30.0'
+        meet_ver = meets_version(pv_version, version_to_reach)
+        if meet_ver:
+            # use scalar_bar_args
+            scalar_bar_args = {'title': name}
+            kwargs.setdefault("scalar_bar_args", scalar_bar_args)
+        else:
+            # use stitle
+            kwargs.setdefault("stitle", name)
         kwargs.setdefault("show_edges", True)
         kwargs.setdefault("nan_color", "grey")
 
@@ -93,7 +155,8 @@ class _InternalPlotter:
         elif location == locations.elemental:
             mesh_location = meshed_region.elements
             if show_max or show_min or show_vectors:
-                warnings.warn("`show_max` and `show_min` is only supported for Nodal results.")
+                warnings.warn(
+                    "`show_max` and `show_min` is only supported for Nodal results.")
                 show_max = False
                 show_min = False
         else:
@@ -102,14 +165,20 @@ class _InternalPlotter:
             )
         component_count = field.component_count
         if component_count > 1:
-            overall_data = np.full((len(mesh_location), component_count), np.nan)
+            overall_data = np.full((len(mesh_location), component_count),
+                                   np.nan)
         else:
             overall_data = np.full(len(mesh_location), np.nan)
         ind, mask = mesh_location.map_scoping(field.scoping)
         overall_data[ind] = field.data[mask]
 
         # plot
-        self._plotter.add_mesh(meshed_region.grid, scalars=overall_data, **kwargs)
+        kwargs_in = self._sort_supported_kwargs(
+            bound_method=self._plotter.add_mesh,
+            **kwargs
+        )
+        self._plotter.add_mesh(meshed_region.grid, scalars=overall_data,
+                               **kwargs_in)
 
         if show_max or show_min:
             # Get Min-Max for the field
@@ -123,9 +192,11 @@ class _InternalPlotter:
             max_field = min_max.outputs.field_max()
             # Get Node ID at max.
             node_id_at_max = max_field.scoping.id(0)
-            labels.append(f"Max: {max_field.data[0]:.2f}\nNodeID: {node_id_at_max}")
+            labels.append(
+                f"Max: {max_field.data[0]:.2f}\nNodeID: {node_id_at_max}")
             # Get Node index at max value.
-            node_index_at_max = meshed_region.nodes.scoping.index(node_id_at_max)
+            node_index_at_max = meshed_region.nodes.scoping.index(
+                node_id_at_max)
             # Append the corresponding Grid Point.
             grid_points.append(meshed_region.grid.points[node_index_at_max])
 
@@ -133,16 +204,19 @@ class _InternalPlotter:
             min_field = min_max.outputs.field_min()
             # Get Node ID at min.
             node_id_at_min = min_field.scoping.id(0)
-            labels.append(f"Min: {min_field.data[0]:.2f}\nNodeID: {node_id_at_min}")
+            labels.append(
+                f"Min: {min_field.data[0]:.2f}\nNodeID: {node_id_at_min}")
             # Get Node index at min. value.
-            node_index_at_min = meshed_region.nodes.scoping.index(node_id_at_min)
+            node_index_at_min = meshed_region.nodes.scoping.index(
+                node_id_at_min)
             # Append the corresponding Grid Point.
             grid_points.append(meshed_region.grid.points[node_index_at_min])
 
         # Plot labels:
         for index, grid_point in enumerate(grid_points):
             self._plotter.add_point_labels(grid_point, [labels[index]],
-                                           font_size=label_text_size, point_size=label_point_size)
+                                           font_size=label_text_size,
+                                           point_size=label_point_size)
 
         # Add Vectors
         if show_vectors:
@@ -179,21 +253,49 @@ class _InternalPlotter:
         if show_axes:
             self._plotter.add_axes()
 
-        # Camera position
-        cpos = kwargs.pop("cpos", None)
-        if cpos:
-            return self._plotter.show(cpos=cpos)
-
-        # Return camera position
-        return_cpos = kwargs.pop("return_cpos", None)
-        if return_cpos:
-            return self._plotter.show(return_cpos=return_cpos)
-
-        return self._plotter.show()
+        kwargs_in = self._sort_supported_kwargs(
+            bound_method=self._plotter.show,
+            **kwargs
+        )
+        return self._plotter.show(**kwargs_in)
 
 
 class DpfPlotter:
+    """DpfPlotter class. Can be used in order to plot
+    results over a mesh.
+
+    The current DpfPlotter is a PyVista based object.
+
+    That means that PyVista must be installed, and that
+    it supports **kwargs as parameter (the argument
+    must be supported by the installed PyVista version).
+    More information about the available arguments are
+    available at :func:`pyvista.plot`.
+    """
+
     def __init__(self, **kwargs):
+        """Create a DpfPlotter object.
+
+        The current DpfPlotter is a PyVista based object.
+
+        That means that PyVista must be installed, and that
+        it supports **kwargs as parameter (the argument
+        must be supported by the installed PyVista version).
+        More information about the available arguments are
+        available at :func:`pyvista.plot`.
+
+        Parameters
+        ----------
+        **kwargs : optional
+            Additional keyword arguments for the plotter. More information
+            are available at :func:`pyvista.plot`.
+
+        Examples
+        --------
+        >>> from ansys.dpf.core.plotter import DpfPlotter
+        >>> pl = DpfPlotter(notebook=False)
+
+        """
         self._internal_plotter = _InternalPlotter(**kwargs)
         self._labels = []
 
@@ -236,6 +338,9 @@ class DpfPlotter:
         ----------
         meshed_region : MeshedRegion
             MeshedRegion to plot.
+        **kwargs : optional
+            Additional keyword arguments for the plotter. More information
+            are available at :func:`pyvista.plot`.
 
         Examples
         --------
@@ -250,7 +355,8 @@ class DpfPlotter:
         """
         self._internal_plotter.add_mesh(meshed_region=meshed_region, **kwargs)
 
-    def add_field(self, field, meshed_region=None, show_max=False, show_min=False,
+    def add_field(self, field, meshed_region=None, show_max=False,
+                  show_min=False,
                   label_text_size=30, label_point_size=20, show_vectors=False,
                   vector_scale=None, **kwargs):
         """Add a field containing data to the plotter.
@@ -270,11 +376,16 @@ class DpfPlotter:
             Label the point with the maximum value.
         show_min : bool, optional
             Label the point with the minimum value.
+
         show_vectors : bool, optional
             Plot vectors (arrows) on each node.
             Only supported for vector results.
         vector_scale : float, optional
             Scales vector length.
+
+        **kwargs : optional
+            Additional keyword arguments for the plotter. More information
+            are available at :func:`pyvista.plot`.
 
         Examples
         --------
@@ -300,6 +411,12 @@ class DpfPlotter:
 
     def show_figure(self, **kwargs):
         """Plot the figure built by the plotter object.
+
+        Parameters
+        ----------
+        **kwargs : optional
+            Additional keyword arguments for the plotter. More information
+            are available at :func:`pyvista.plot`.
 
         Examples
         --------
@@ -479,7 +596,8 @@ class Plotter:
             warnings.simplefilter("ignore")
 
         if isinstance(
-                field_or_fields_container, (dpf.core.Field, dpf.core.FieldsContainer)
+                field_or_fields_container,
+                (dpf.core.Field, dpf.core.FieldsContainer)
         ):
             fields_container = None
             if isinstance(field_or_fields_container, dpf.core.Field):
@@ -490,7 +608,8 @@ class Plotter:
                 fields_container.add_field(
                     {DefinitionLabels.time: 1}, field_or_fields_container
                 )
-            elif isinstance(field_or_fields_container, dpf.core.FieldsContainer):
+            elif isinstance(field_or_fields_container,
+                            dpf.core.FieldsContainer):
                 fields_container = field_or_fields_container
         else:
             raise TypeError("Only field or fields_container can be plotted.")
@@ -549,13 +668,16 @@ class Plotter:
                             "shell_layer attribute must be a core.shell_layers instance."
                         )
                     sl = shell_layers
-                changeOp.inputs.e_shell_layer.connect(sl.value)  # top layers taken
-                fields_container = changeOp.get_output(0, core.types.fields_container)
+                changeOp.inputs.e_shell_layer.connect(
+                    sl.value)  # top layers taken
+                fields_container = changeOp.get_output(0,
+                                                       core.types.fields_container)
                 break
 
         # Merge field data into a single array
         if component_count > 1:
-            overall_data = np.full((len(mesh_location), component_count), np.nan)
+            overall_data = np.full((len(mesh_location), component_count),
+                                   np.nan)
         else:
             overall_data = np.full(len(mesh_location), np.nan)
 
@@ -580,8 +702,10 @@ class Plotter:
         kwargs.setdefault("stitle", name)
         text = kwargs.pop('text', None)
         if text is not None:
-            self._internal_plotter._plotter.add_text(text, position='lower_edge')
-        self._internal_plotter._plotter.add_mesh(mesh.grid, scalars=overall_data, **kwargs)
+            self._internal_plotter._plotter.add_text(text,
+                                                     position='lower_edge')
+        self._internal_plotter._plotter.add_mesh(mesh.grid,
+                                                 scalars=overall_data, **kwargs)
 
         if background is not None:
             self._internal_plotter._plotter.set_background(background)
@@ -600,7 +724,8 @@ class Plotter:
             version_to_reach = '0.32.0'
             meet_ver = meets_version(pv_version, version_to_reach)
             if meet_ver:
-                return self._internal_plotter._plotter.show(return_cpos=return_cpos)
+                return self._internal_plotter._plotter.show(
+                    return_cpos=return_cpos)
             else:
                 txt = """To use the return_cpos option, please upgrade
                 your pyvista module with a version higher than """
