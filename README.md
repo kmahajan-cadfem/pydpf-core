@@ -54,7 +54,7 @@ See the example scripts in the examples folder for some basic example.  More wil
 
 ### Brief Demo
 
-Provided you have ANSYS 2021R1 or higher installed, a DPF server will start
+Provided you have ANSYS 2021R1 or higher installed (check [Client-Server compatibility](https://dpfdocs.pyansys.com/getting_started/index.html#client-server-compatibility)), a DPF server will start
 automatically once you start using DPF.
 
 To open a result file and explore what's inside, do:
