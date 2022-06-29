@@ -46,16 +46,12 @@ mesh.plot(field_or_fields_container=fc, title='Mesh with fields container', text
 mesh.plot(field_or_fields_container=field, title='Mesh with field', text='Mesh field plot')
 #
 # One can also plot a MeshesContainer. Here our mesh is split by material.
-split_mesh_op = dpf.Operator("split_mesh")
-split_mesh_op.connect(7, mesh)
-split_mesh_op.connect(13, "mat")
-meshes_cont = split_mesh_op.get_output(0, dpf.types.meshes_container)
+split_mesh_op = dpf.operators.mesh.split_mesh(mesh=mesh, property="mat")
+meshes_cont = split_mesh_op.get_output(output_type=dpf.types.meshes_container)
 meshes_cont.plot(title='Meshes Container', text='Meshes Container plot')
 # A fields_container can be given as input, with results on each part of our split mesh.
-disp_op = dpf.Operator("U")
-disp_op.connect(7, meshes_cont)
-ds = dpf.DataSources(examples.multishells_rst)
-disp_op.connect(4, ds)
+disp_op = dpf.operators.result.displacement(data_sources=model.metadata.data_sources,
+                                            mesh=meshes_cont)
 disp_fc = disp_op.outputs.fields_container()
 meshes_cont.plot(disp_fc, title='Meshes Container disp_fc', text='Meshes Container disp_fc plot')
 # Additional PyVista kwargs are supported, such as:
