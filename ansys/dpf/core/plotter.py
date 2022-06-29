@@ -266,6 +266,9 @@ class _PyVistaPlotter:
             scalar_bar_args = kwargs.pop("scalar_bar_args", None)
             if not scalar_bar_args:
                 scalar_bar_args = {'title': stitle}
+            else:
+                if stitle:
+                    scalar_bar_args['title'] = stitle
             kwargs.setdefault("scalar_bar_args", scalar_bar_args)
         else:
             # use stitle
