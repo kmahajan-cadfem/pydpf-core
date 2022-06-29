@@ -31,6 +31,9 @@ fc = stress.outputs.fields_container()
 field = fc[0]
 field.plot(notebook=False, shell_layers=None, show_axes=True, title='Field', text='Field plot')
 # # Additional PyVista kwargs are supported, such as:
+field.plot(notebook=False, shell_layers=None, show_axes=True, title='Field',
+           stitle="Custom",
+           scalar_bar_args=dict(title_font_size=40, label_font_size=10, font_family="arial"))
 field.plot(off_screen=True, notebook=False, screenshot='field_plot.png',
            title='Field', text='Field plot off')
 #
