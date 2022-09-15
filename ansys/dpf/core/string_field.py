@@ -21,6 +21,10 @@ from ansys.dpf.gate import (
 class StringField(_FieldBase):
     """Describes string data scoped on entities such as names.
 
+    .. deprecated:: 0.8.0
+              `StringField` will be removed in 0.8.0, it is replaced by
+              `StringFieldNew` because reason.
+
     This class is a field with string values instead of double values.
 
     Parameters
@@ -35,6 +39,35 @@ class StringField(_FieldBase):
         default is ``None``, in which case an attempt is made to use the global
         server.
 
+
+    .. versionadded:: 0.6.0
+
+    .. warning:: Class available with server's version starting at 5.0.
+
+    .. attention:: Class available with server's version starting at 5.0.
+
+    .. caution:: Class available with server's version starting at 5.0.
+
+    .. note:: https://dev.docs.pyansys.com/doc-style/docstrings.html#additional-directives
+
+    .. important:: Class available with server's version starting at 5.0.
+
+    .. tip:: Class available with server's version starting at 5.0.
+
+    .. versionadded:: 0.6.0
+
+    Warnings
+    --------
+    Class available with server's version starting at 5.0.
+
+    See Also
+    --------
+    https://numpydoc.readthedocs.io/en/latest/format.html#docstring-standard
+
+    Notes
+    -----
+    Class available with server's version starting at 5.0.
+
     Examples
     --------
     >>> from ansys.dpf import core as dpf
@@ -44,10 +77,6 @@ class StringField(_FieldBase):
     >>> pfield.scoping = scop
     >>> list_data = ["water", "oil", "gaz", "paint", "air"]
     >>> pfield.data = list_data
-
-    Notes
-    -----
-    Class available with server's version starting at 5.0.
     """
 
     def __init__(
