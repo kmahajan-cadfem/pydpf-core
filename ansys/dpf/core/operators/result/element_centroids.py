@@ -90,7 +90,7 @@ class element_centroids(Operator):
     ... )
 
     >>> # Get output data
-    >>> result_fields_container = op.outputs.fields_container()
+    >>> result_field = op.outputs.field()
     """
 
     def __init__(
@@ -209,8 +209,8 @@ class element_centroids(Operator):
             },
             map_output_pin_spec={
                 0: PinSpecification(
-                    name="fields_container",
-                    type_names=["fields_container"],
+                    name="field",
+                    type_names=["field"],
                     optional=False,
                     document="""""",
                 ),
@@ -494,27 +494,27 @@ class OutputsElementCentroids(_Outputs):
     >>> from ansys.dpf import core as dpf
     >>> op = dpf.operators.result.element_centroids()
     >>> # Connect inputs : op.inputs. ...
-    >>> result_fields_container = op.outputs.fields_container()
+    >>> result_field = op.outputs.field()
     """
 
     def __init__(self, op: Operator):
         super().__init__(element_centroids._spec().outputs, op)
-        self._fields_container = Output(element_centroids._spec().output_pin(0), 0, op)
-        self._outputs.append(self._fields_container)
+        self._field = Output(element_centroids._spec().output_pin(0), 0, op)
+        self._outputs.append(self._field)
 
     @property
-    def fields_container(self):
-        """Allows to get fields_container output of the operator
+    def field(self):
+        """Allows to get field output of the operator
 
         Returns
         ----------
-        my_fields_container : FieldsContainer
+        my_field : Field
 
         Examples
         --------
         >>> from ansys.dpf import core as dpf
         >>> op = dpf.operators.result.element_centroids()
         >>> # Connect inputs : op.inputs. ...
-        >>> result_fields_container = op.outputs.fields_container()
+        >>> result_field = op.outputs.field()
         """  # noqa: E501
-        return self._fields_container
+        return self._field
